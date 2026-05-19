@@ -1,5 +1,11 @@
 USE BloodOrganDonation;
 
+ALTER TABLE donor AUTO_INCREMENT = 1;
+ALTER TABLE hospital AUTO_INCREMENT = 1;
+ALTER TABLE donor AUTO_INCREMENT = 1;
+ALTER TABLE patient_request AUTO_INCREMENT = 1;
+ALTER TABLE donation_record AUTO_INCREMENT = 1;
+ALTER TABLE donation_match AUTO_INCREMENT = 1;
 
 INSERT INTO hospital (hospital_name, city, contact) VALUES
 ('Apollo Hospital', 'Bangalore', '9876543210'),
@@ -134,50 +140,4 @@ VALUES
 SELECT * 
 FROM donation_match;
 
-INSERT INTO blood_inventory
-(hospital_id, blood_group, available_units)
-VALUES
-(3,'AB-',2),
-(1,'O+',14),
-(7,'B+',5),
-(2,'A-',3),
-(5,'O-',6),
-
-(1,'A+',8),
-(9,'AB+',4),
-(4,'B-',2),
-(6,'O+',11),
-(8,'A+',5),
-
-(10,'B+',7),
-(2,'O-',4),
-(3,'A+',6),
-(5,'AB+',2),
-(7,'O+',9),
-
-(4,'A-',5),
-(6,'B+',4),
-(8,'AB-',1),
-(9,'O+',13),
-(10,'A+',6),
-
-(1,'B+',7),
-(2,'AB+',2),
-(3,'O+',10),
-(4,'AB+',3),
-(5,'A+',9),
-
-(6,'O-',5),
-(7,'B-',3),
-(8,'O+',8),
-(9,'A-',4),
-(10,'AB+',2),
-
-(1,'AB-',1),
-(2,'B+',6),
-(3,'O-',5),
-(4,'A+',7),
-(5,'B-',2);
-
-SELECT *
-FROM blood_inventory;
+SELECT * FROM blood_inventory;
