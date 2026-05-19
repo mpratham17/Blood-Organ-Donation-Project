@@ -14,7 +14,7 @@ CREATE TABLE donor(
 );
 CREATE TABLE hospital(
 	hospital_id INT PRIMARY KEY auto_increment,
-    hospital_name VARCHAR(15) NOT NULL,
+    hospital_name VARCHAR(25) NOT NULL,
     city VARCHAR(15) NOT NULL,
     contact VARCHAR(15) NOT NULL
 );
@@ -23,7 +23,7 @@ CREATE TABLE patient_request(
     hospital_id INT NOT NULL,
     patient_name VARCHAR(20) NOT NULL,
     blood_required VARCHAR(5),
-    organ_reqired VARCHAR(10),
+    organ_required VARCHAR(10),
     required_units INT,
     urgency_level ENUM('low','mid','high') NOT NULL,
     request_date DATE NOT NULL,
@@ -34,7 +34,7 @@ CREATE TABLE donation_record(
 	donation_id INT PRIMARY KEY auto_increment,
 	donor_id INT NOT NULL,
 	hospital_id INT NOT NULL,
-	donation_type ENUM('bood','organ') NOT NULL,
+	donation_type ENUM('blood','organ') NOT NULL,
 	donation_date DATE NOT NULL,
 	donation_units int,
 	
