@@ -1,3 +1,4 @@
+DROP DATABASE bloodorgandonation;
 CREATE DATABASE BloodOrganDonation;
 USE BloodOrganDonation;
 CREATE TABLE donor(
