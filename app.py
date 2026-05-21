@@ -52,7 +52,10 @@ query_files = {
     "backend/queries/organ_requests.sql",
 
     "Total Requests Per Hospital":
-    "backend/queries/total_requests_per_hospital.sql"
+    "backend/queries/total_requests_per_hospital.sql",
+
+    "Blood Inventory Status":
+    "backend/queries/blood_inventory.sql",
 }
 
 # Streamlit UI
