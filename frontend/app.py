@@ -114,6 +114,77 @@ def run_query(query):
     conn.close()
     return df
 
+# =========================
+# DONATE BLOOD FUNCTIONS
+# =========================
+
+def fetch_active_requests():
+
+    conn = create_connection()
+
+    query = """
+    SELECT request_id,
+           patient_name,
+           blood_required,
+           required_units,
+           urgency_level
+    FROM patient_request
+    WHERE blood_required IS NOT NULL;
+    """
+
+    df = pd.read_sql(query, conn)
+
+    conn.close()
+
+    return df
+
+def insert_donation_record(
+    donor_id,
+    hospital_id,
+    donation_type,
+    donation_units,
+    donation_date
+):
+
+    try:
+
+        conn = create_connection()
+
+        cursor = conn.cursor()
+
+        query = """
+        INSERT INTO donation_record
+        (
+            donor_id,
+            hospital_id,
+            donation_type,
+            donation_units,
+            donation_date
+        )
+        VALUES (%s,%s,%s,%s,%s)
+        """
+
+        values = (
+            donor_id,
+            hospital_id,
+            donation_type,
+            donation_units,
+            donation_date
+        )
+
+        cursor.execute(query, values)
+
+        conn.commit()
+
+        cursor.close()
+        conn.close()
+
+        return True, "Donation submitted successfully!"
+
+    except mysql.connector.Error as err:
+
+        return False, err.msg
+
 # Page Configuration
 st.set_page_config(
     page_title="DBMS Dashboard",
@@ -226,7 +297,7 @@ if "current_page" not in st.session_state:
     st.session_state.current_page = "Dashboard"
 
 # Sidebar Navigation
-pages = ["Dashboard", "Donors", "Hospital", "Patient Requests", "Donation Match" , "Blood Inventory"]
+pages = ["Dashboard", "Donors", "Hospital", "Patient Requests", "Donation Centre" , "Donation Match" , "Blood Inventory"]
 
 with st.sidebar:
     st.markdown('<div class="sidebar-title">🩸 DBMS Project<br><span style="font-size: 12px;">Blood & Organ Donation System</span></div>', unsafe_allow_html=True)
@@ -247,20 +318,6 @@ with st.sidebar:
             st.rerun()
 
 page = st.session_state.current_page
-
-# Sample Data Generation
-def generate_blood_bank_data():
-    days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-    values = [350, 600, 500, 800, 550, 600, 500]
-    return days, values
-
-def generate_notifications():
-    return [
-        {"icon": "🩸", "title": "O- blood stock is running low.", "time": "5 min ago"},
-        {"icon": "👤", "title": "New donor Rahul Sharma registered.", "time": "15 min ago"},
-        {"icon": "🚨", "title": "Emergency request for A+ is active.", "time": "25 min ago"},
-        {"icon": "🩸", "title": "Blood batch B+ expiring tomorrow.", "time": "1 hr ago"},
-    ]
 
 # Dashboard Page
 if page == "Dashboard":
@@ -346,18 +403,32 @@ if page == "Dashboard":
     with col1:
         st.markdown('<div class="section-title">📊 Blood Bank Total Record</div>', unsafe_allow_html=True)
         
-        days, values = generate_blood_bank_data()
+        query = """
+        SELECT donation_date,
+            COUNT(*) AS total_donations
+        FROM donation_record
+        GROUP BY donation_date
+        ORDER BY donation_date;
+        """
+
+        chart_df = run_query(query)
+
+        days = pd.to_datetime(
+            chart_df["donation_date"]
+        ).dt.strftime('%d-%b')        
+        values = chart_df["total_donations"]
         
         # Create line chart
         fig, ax = plt.subplots(figsize=(10, 4))
         ax.plot(days, values, marker='o', color='#CE1126', linewidth=2, markersize=8)
-        ax.fill_between(range(len(days)), values, alpha=0.2, color='#CE1126')
-        ax.set_ylim(0, 1000)
+        max_value = max(values)
+        ax.set_ylim(0, max_value + 2)
+        ax.fill_between(days, values, alpha=0.2, color='#CE1126')
         ax.grid(axis='y', alpha=0.3)
         ax.set_ylabel('Units', fontsize=10)
         ax.spines['top'].set_visible(False)
         ax.spines['right'].set_visible(False)
-        
+        plt.xticks(rotation=45)
         st.pyplot(fig)
     
     with col2:
@@ -410,8 +481,13 @@ if page == "Dashboard":
         
         # Create bar chart
         fig, ax = plt.subplots(figsize=(8, 4))
-        colors = ['#CE1126', '#003B7A', '#CE1126', '#003B7A', '#CE1126']
-        bars = ax.bar(groups, values, color=colors, alpha=0.8, edgecolor='black', linewidth=1.5)
+        bars = ax.bar(
+            groups,
+            values,
+            alpha=0.8,
+            edgecolor='black',
+            linewidth=1.5
+        )
         
         # Add value labels on bars
         for bar in bars:
@@ -423,31 +499,39 @@ if page == "Dashboard":
         ax.set_ylabel('Units Requested', fontsize=10)
         ax.spines['top'].set_visible(False)
         ax.spines['right'].set_visible(False)
-        ax.set_ylim(0, 250)
         
         st.pyplot(fig)
     
     with col2:
         st.markdown('<div class="section-title">🔔 Recent Notification</div>', unsafe_allow_html=True)
         
-        notifications = generate_notifications()
-        
-        for notif in notifications:
+        query = """
+        SELECT donor_name,
+            blood_group,
+            city
+        FROM donor
+        ORDER BY donor_id DESC
+        LIMIT 4;
+        """
+
+        notif_df = run_query(query)
+
+        for _, row in notif_df.iterrows():
+
             st.markdown(f"""
             <div class="notification-item">
                 <div style="display: flex; justify-content: space-between; align-items: start;">
                     <div>
-                        <div class="notification-title">{notif['icon']} {notif['title']}</div>
-                        <div class="notification-time">{notif['time']}</div>
+                        <div class="notification-title">
+                            👤 New donor {row['donor_name']} registered
+                        </div>
+                        <div class="notification-time">
+                            {row['blood_group']} • {row['city']}
+                        </div>
                     </div>
                 </div>
             </div>
             """, unsafe_allow_html=True)
-        
-        st.markdown(
-            '<p style="text-align: right; color: #003B7A; text-decoration: underline; cursor: pointer; font-weight: bold;">View All Notifications →</p>',
-            unsafe_allow_html=True
-        )
 
 # Donors Page
 elif page == "Donors":
@@ -904,6 +988,93 @@ elif page == "Patient Requests":
             use_container_width=True
         )
 
+# Donate Blood Page
+elif page == "Donation Centre":
+
+    st.markdown(
+        '<h1 style="color: #CE1126;">Donation Centre</h1>',
+        unsafe_allow_html=True
+    )
+
+    st.divider()
+
+    # =========================
+    # ACTIVE REQUESTS
+    # =========================
+
+    st.subheader("Active Blood Requests")
+
+    request_df = fetch_active_requests()
+
+    st.dataframe(
+        request_df,
+        use_container_width=True
+    )
+
+    st.divider()
+
+    # =========================
+    # DONATION FORM
+    # =========================
+
+    st.subheader("Apply To Donate")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+
+        donor_id = st.number_input(
+            "Donor ID",
+            min_value=1,
+            step=1
+        )
+
+        donation_units = st.number_input(
+            "Donation Units",
+            min_value=1,
+            max_value=10
+        )
+
+    with col2:
+
+        hospital_id = st.number_input(
+            "Hospital ID",
+            min_value=1,
+            step=1
+        )
+
+        donation_type = st.selectbox(
+            "Donation Type",
+            ["blood", "organ"]
+        )
+
+        donation_date = st.date_input(
+            "Donation Date"
+        )
+
+    submitted = st.button(
+        "Donate Blood",
+        use_container_width=True
+    )
+
+    if submitted:
+
+        success, message = insert_donation_record(
+            donor_id,
+            hospital_id,
+            donation_type,
+            donation_units,
+            donation_date
+        )
+
+        if success:
+
+            st.success(f"✅ {message}")
+
+        else:
+
+            st.error(f"❌ {message}")
+
 # Donation Match Page
 elif page == "Donation Match":
 
@@ -1078,78 +1249,19 @@ elif page == "Blood Inventory":
     st.divider()
 
     # =========================
-    # METRICS
-    # =========================
-
-    conn = create_connection()
-
-    cursor = conn.cursor()
-
-    # Total Blood Units
-    cursor.execute("""
-    SELECT SUM(units_available)
-    FROM blood_inventory;
-    """)
-
-    total_units = cursor.fetchone()[0]
-
-    # Low Stock Count
-    cursor.execute("""
-    SELECT COUNT(*)
-    FROM blood_inventory
-    WHERE units_available < 50;
-    """)
-
-    low_stock = cursor.fetchone()[0]
-
-    # Most Available Blood Group
-    cursor.execute("""
-    SELECT blood_group,
-           units_available
-    FROM blood_inventory
-    ORDER BY units_available DESC
-    LIMIT 1;
-    """)
-
-    result = cursor.fetchone()
-
-    top_group = result[0]
-
-    cursor.close()
-    conn.close()
-
-    # DISPLAY METRICS
-    col1, col2, col3 = st.columns(3)
-
-    with col1:
-        st.metric(
-            "Total Units",
-            total_units
-        )
-
-    with col2:
-        st.metric(
-            "Low Stock Groups",
-            low_stock
-        )
-
-    with col3:
-        st.metric(
-            "Highest Stock",
-            top_group
-        )
-
-    st.divider()
-
-    # =========================
     # BLOOD INVENTORY TABLE
     # =========================
 
-    st.subheader("Current Blood Inventory")
+    st.subheader("Hospital Blood Inventory")
 
     query = """
-    SELECT *
-    FROM blood_inventory;
+    SELECT h.hospital_name,
+           b.blood_group,
+           b.available_units
+    FROM blood_inventory b
+    JOIN hospital h
+    ON b.hospital_id = h.hospital_id
+    ORDER BY h.hospital_name, b.blood_group;
     """
 
     inventory_df = run_query(query)
@@ -1162,46 +1274,19 @@ elif page == "Blood Inventory":
     st.divider()
 
     # =========================
-    # LOW STOCK ALERTS
-    # =========================
-
-    st.subheader("Low Stock Alerts")
-
-    query = """
-    SELECT blood_group,
-           units_available
-    FROM blood_inventory
-    WHERE units_available < 50;
-    """
-
-    low_stock_df = run_query(query)
-
-    st.dataframe(
-        low_stock_df,
-        use_container_width=True
-    )
-
-    st.divider()
-
-    # =========================
-    # BLOOD DISTRIBUTION CHART
+    # BLOOD INVENTORY CHART
     # =========================
 
     st.subheader("Blood Inventory Distribution")
 
-    query = """
-    SELECT blood_group,
-           units_available
-    FROM blood_inventory;
-    """
-
-    chart_df = run_query(query)
+    blood_groups = inventory_df["blood_group"]
+    units = inventory_df["available_units"]
 
     fig, ax = plt.subplots(figsize=(10, 5))
 
     bars = ax.bar(
-        chart_df["blood_group"],
-        chart_df["units_available"]
+        blood_groups,
+        units
     )
 
     # VALUE LABELS
@@ -1218,7 +1303,7 @@ elif page == "Blood Inventory":
             fontweight='bold'
         )
 
-    ax.set_ylabel("Units Available")
+    ax.set_ylabel("Available Units")
     ax.set_xlabel("Blood Group")
 
     ax.spines['top'].set_visible(False)
